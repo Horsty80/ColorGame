@@ -8,9 +8,44 @@
   </head>
   <body>
     <h1>Ball Game</h1>
+    <button id="btnCreate">New Game</button>
+    <button id="btnJoin">Join Game</button>
+    <input type="text" id="txtGameId" />
+    <div id="divPlayers"></div>
     <script>
+      // startup ws
       let clientId = null;
+      let gameId = null;
       let ws = new WebSocket("ws://localhost:9090");
+
+      // Html elements
+      const btnCreate = document.getElementById("btnCreate");
+      const btnJoin = document.getElementById("btnJoin");
+      const txtGameId = document.getElementById("txtGameId");
+      const divPlayers = document.getElementById("divPlayers");
+
+      // Wiring events
+      btnCreate.addEventListener("click", (e) => {
+        const payload = {
+          method: "create",
+          clientId,
+        };
+        ws.send(JSON.stringify(payload));
+      });
+
+      btnJoin.addEventListener("click", (e) => {
+        if (gameId == null) {
+          gameId = txtGameId.value;
+        }
+
+        const payload = {
+          method: "join",
+          clientId,
+          gameId,
+        };
+        ws.send(JSON.stringify(payload));
+      });
+
       ws.onmessage = (message) => {
         // message.data string that the server have send
         const response = JSON.parse(message.data);
@@ -18,6 +53,32 @@
         if (response.method === "connect") {
           clientId = response.clientId;
           console.log("client Id set successfully ", clientId);
+        }
+
+        if (response.method === "create") {
+          gameId = response.game.id;
+          console.log(
+            "Game successfully created with id",
+            response.game.id,
+            "with ",
+            response.game.balls,
+            " balls"
+          );
+        }
+
+        if (response.method === "join") {
+          const game = response.game;
+          while (divPlayers.firstChild) {
+            // remove all children to clean up
+            divPlayers.removeChild(divPlayers.firstChild);
+          }
+          game.clients.forEach((client) => {
+            const d = document.createElement("div");
+            d.style.width = "200px";
+            d.style.background = client.color;
+            d.textContent = client.clientId;
+            divPlayers.appendChild(d);
+          });
         }
       };
     </script>
