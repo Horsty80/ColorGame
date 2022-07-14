@@ -12,10 +12,12 @@
     <button id="btnJoin">Join Game</button>
     <input type="text" id="txtGameId" />
     <div id="divPlayers"></div>
+    <div id="divBalls"></div>
     <script>
       // startup ws
       let clientId = null;
       let gameId = null;
+      let playerColor = null;
       let ws = new WebSocket("ws://localhost:9090");
 
       // Html elements
@@ -23,6 +25,7 @@
       const btnJoin = document.getElementById("btnJoin");
       const txtGameId = document.getElementById("txtGameId");
       const divPlayers = document.getElementById("divPlayers");
+      const divBalls = document.getElementById("divBalls");
 
       // Wiring events
       btnCreate.addEventListener("click", (e) => {
@@ -78,7 +81,46 @@
             d.style.background = client.color;
             d.textContent = client.clientId;
             divPlayers.appendChild(d);
+
+            if (client.clientId === clientId) {
+              playerColor = client.color;
+            }
           });
+
+          while (divBalls.firstChild) {
+            // remove all children to clean up
+            divBalls.removeChild(divBalls.firstChild);
+          }
+          for (let i = 0; i < game.balls; i++) {
+            const b = document.createElement("button");
+            b.id = "ball" + (i + 1);
+            b.tag = i + 1;
+            b.textContent = i + 1;
+            b.style.width = "150px";
+            b.style.height = "150px";
+            b.addEventListener("click", (e) => {
+              b.style.background = playerColor;
+              const payload = {
+                method: "play",
+                gameId,
+                clientId,
+                ballId: b.tag,
+                color: playerColor,
+              };
+              ws.send(JSON.stringify(payload));
+            });
+            divBalls.appendChild(b);
+          }
+        }
+        if (response.method === "update") {
+          if (!response.game.state) {
+            return;
+          }
+          for (const b of Object.keys(response.game.state)) {
+            const color = response.game.state[b];
+            const ballObject = document.getElementById(`ball${b}`);
+            ballObject.style.backgroundColor = color;
+          }
         }
       };
     </script>
